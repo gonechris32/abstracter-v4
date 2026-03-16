@@ -1,4 +1,5 @@
--- ABSTRACTER REALISM V4 (Cosmetic, Local Only)
+-- ABSTRACTOR REALISM – ULTIMATE VFX MOD
+-- Local only, cosmetic
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
@@ -7,26 +8,77 @@ local UserInput = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
-local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.Name = "ARV4_UI"
 
 ------------------------------------------------
--- SKIES
+-- TOGGLE GUI BUTTON
+------------------------------------------------
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.Name = "AR_Ultimate_GUI"
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 200, 0, 40)
+toggleButton.Position = UDim2.new(0, 50, 0, 50)
+toggleButton.Text = "Toggle Abstracter Realism"
+toggleButton.BackgroundColor3 = Color3.fromRGB(40,40,45)
+toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+toggleButton.Parent = gui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 320, 0, 400)
+mainFrame.Position = UDim2.new(0, 50, 0, 100)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30,30,35)
+mainFrame.Visible = false
+mainFrame.Parent = gui
+
+toggleButton.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
+
+-- Draggable UI
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+mainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+	end
+end)
+mainFrame.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+UserInput.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+------------------------------------------------
+-- SKY OPTIONS
 ------------------------------------------------
 local Skies = {
 	Default = "rbxassetid://90988519",
 	Space = "rbxassetid://15983996673",
 	Galaxy = "rbxassetid://8202961731",
 	Storm = "rbxassetid://4607457995",
-	Vaporwave = "rbxassetid://95200634"
+	Vaporwave = "rbxassetid://95200634",
+	Sunset = "rbxassetid://12345678", -- example
+	Night = "rbxassetid://23456789", -- example
+	Cloudy = "rbxassetid://34567890" -- example
 }
-
 local CurrentSky
-
 local function ApplySky(id)
-	if Lighting:FindFirstChild("AR_Sky") then
-		Lighting.AR_Sky:Destroy()
-	end
+	if Lighting:FindFirstChild("AR_Sky") then Lighting.AR_Sky:Destroy() end
 	local sky = Instance.new("Sky")
 	sky.Name = "AR_Sky"
 	sky.SkyboxBk = id
@@ -38,67 +90,67 @@ local function ApplySky(id)
 	sky.Parent = Lighting
 	CurrentSky = sky
 end
-
 ApplySky(Skies.Default)
 
+-- Sky buttons in UI
+local y = 10
+for name,id in pairs(Skies) do
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1,-20,0,30)
+	btn.Position = UDim2.new(0,10,0,y)
+	btn.Text = name
+	btn.Parent = mainFrame
+	btn.MouseButton1Click:Connect(function()
+		ApplySky(id)
+	end)
+	y += 35
+end
+
 ------------------------------------------------
--- POST-PROCESSING (FPS STYLE)
+-- SHADER TOGGLE
+------------------------------------------------
+local darkShader = false
+local shaderBtn = Instance.new("TextButton")
+shaderBtn.Size = UDim2.new(1,-20,0,30)
+shaderBtn.Position = UDim2.new(0,10,0,y)
+shaderBtn.Text = "Toggle Dark/Regular Shader"
+shaderBtn.Parent = mainFrame
+shaderBtn.MouseButton1Click:Connect(function()
+	darkShader = not darkShader
+	if darkShader then
+		Lighting.Ambient = Color3.fromRGB(40,40,50)
+	else
+		Lighting.Ambient = Color3.fromRGB(170,170,170)
+	end
+end)
+y += 35
+
+------------------------------------------------
+-- POST-PROCESSING
 ------------------------------------------------
 local cc = Instance.new("ColorCorrectionEffect", Lighting)
 cc.Contrast = 0.2
 cc.Saturation = 0.1
 cc.TintColor = Color3.fromRGB(255,255,255)
-
 local bloom = Instance.new("BloomEffect", Lighting)
 bloom.Intensity = 1.5
 bloom.Size = 24
-
 local dof = Instance.new("DepthOfFieldEffect", Lighting)
 dof.FocusDistance = 40
 dof.InFocusRadius = 20
 dof.FarIntensity = 0.5
 dof.NearIntensity = 0.2
-
 local blur = Instance.new("BlurEffect", Lighting)
 blur.Size = 0
-
 local lastCF = camera.CFrame
 RunService.RenderStepped:Connect(function(dt)
 	local speed = (camera.CFrame.Position - lastCF.Position).Magnitude/dt
-	blur.Size = math.clamp(speed*0.4,0,20)
+	blur.Size = math.clamp(speed*0.5,0,20)
 	lastCF = camera.CFrame
 end)
 
 ------------------------------------------------
--- LIGHTNING STORMS
-------------------------------------------------
-task.spawn(function()
-	while true do
-		task.wait(math.random(8,20))
-		local old = Lighting.Brightness
-		Lighting.Brightness = 8
-		task.wait(0.1)
-		Lighting.Brightness = old
-	end
-end)
-
-------------------------------------------------
--- VOLUMETRIC FOG/CLOUDS
-------------------------------------------------
-Lighting.FogColor = Color3.fromRGB(170,170,180)
-Lighting.FogStart = 100
-Lighting.FogEnd = 700
-
-local clouds = Instance.new("ParticleEmitter")
-clouds.Texture = "rbxassetid://114191997" -- fake cloud particle
-clouds.Rate = 50
-clouds.Lifetime = NumberRange.new(20)
-clouds.Size = NumberSequence.new(50)
-clouds.Speed = NumberRange.new(0)
-clouds.Parent = workspace.Terrain -- particle system as fake volumetric cloud
-
-------------------------------------------------
--- LOCAL RAIN
+-- LOCAL WEATHER
 ------------------------------------------------
 local rainPart = Instance.new("Part")
 rainPart.Anchored = true
@@ -118,8 +170,25 @@ RunService.RenderStepped:Connect(function()
 	rainPart.Position = camera.CFrame.Position + Vector3.new(0,20,0)
 end)
 
+Lighting.FogColor = Color3.fromRGB(170,170,180)
+Lighting.FogStart = 100
+Lighting.FogEnd = 700
+
 ------------------------------------------------
--- WEAPON FX
+-- LIGHTNING STORMS
+------------------------------------------------
+task.spawn(function()
+	while true do
+		task.wait(math.random(8,20))
+		local old = Lighting.Brightness
+		Lighting.Brightness = 8
+		task.wait(0.1)
+		Lighting.Brightness = old
+	end
+end)
+
+------------------------------------------------
+-- WEAPON VISUAL FX
 ------------------------------------------------
 local rainbowMode = false
 
@@ -152,22 +221,30 @@ end
 
 local function MonitorChar(char)
 	char.ChildAdded:Connect(function(v)
-		if v:IsA("Tool") then
-			ApplyWeaponFX(v)
-		end
+		if v:IsA("Tool") then ApplyWeaponFX(v) end
 	end)
 end
 
 if player.Character then MonitorChar(player.Character) end
 player.CharacterAdded:Connect(MonitorChar)
 
+-- Rainbow toggle button
+local rainbowBtn = Instance.new("TextButton")
+rainbowBtn.Size = UDim2.new(1,-20,0,30)
+rainbowBtn.Position = UDim2.new(0,10,0,y)
+rainbowBtn.Text = "Rainbow Weapons"
+rainbowBtn.Parent = mainFrame
+rainbowBtn.MouseButton1Click:Connect(function()
+	rainbowMode = not rainbowMode
+end)
+y += 35
+
 ------------------------------------------------
--- CINEMATIC CAMERA SWAY + RECOIL
+-- CINEMATIC CAMERA + SWAY + RECOIL
 ------------------------------------------------
 local sway = 0
 local recoil = 0
 RunService.RenderStepped:Connect(function(dt)
-	if sway < 0 then sway = 0 end
 	local cf = camera.CFrame
 	local angle = math.rad(math.sin(tick()*1.5)*0.2)
 	camera.CFrame = cf * CFrame.Angles(angle,0,0)
@@ -175,73 +252,4 @@ RunService.RenderStepped:Connect(function(dt)
 		camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(math.random(-recoil,recoil)/10), math.rad(math.random(-recoil,recoil)/10),0)
 		recoil *= 0.85
 	end
-end)
-
-------------------------------------------------
--- DRAGGABLE TAB UI
-------------------------------------------------
-local tabs = {"Skies","Weather","Weapons","PostProcessing"}
-local currentTab = "Skies"
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,300,0,300)
-frame.Position = UDim2.new(0,50,0,50)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,35)
-frame.Parent = gui
-
-local dragging = false
-local dragInput
-local dragStart
-local startPos
-
-frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		dragStart = input.Position
-		startPos = frame.Position
-	end
-end)
-
-frame.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = false
-	end
-end)
-
-UserInput.InputChanged:Connect(function(input)
-	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - dragStart
-		frame.Position = UDim2.new(
-			startPos.X.Scale,
-			startPos.X.Offset + delta.X,
-			startPos.Y.Scale,
-			startPos.Y.Offset + delta.Y
-		)
-	end
-end)
-
-------------------------------------------------
--- UI BUTTONS
-------------------------------------------------
-local y = 10
-for name,id in pairs(Skies) do
-	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1,-20,0,30)
-	btn.Position = UDim2.new(0,10,0,y)
-	btn.Text = name
-	btn.Parent = frame
-	btn.MouseButton1Click:Connect(function()
-		ApplySky(id)
-	end)
-	y += 35
-end
-
--- Rainbow weapon toggle
-local rainbowBtn = Instance.new("TextButton")
-rainbowBtn.Size = UDim2.new(1,-20,0,30)
-rainbowBtn.Position = UDim2.new(0,10,0,y)
-rainbowBtn.Text = "Rainbow Weapons"
-rainbowBtn.Parent = frame
-rainbowBtn.MouseButton1Click:Connect(function()
-	rainbowMode = not rainbowMode
 end)
